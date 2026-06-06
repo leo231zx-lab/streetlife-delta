@@ -829,8 +829,11 @@ if IS_MOBILE then return end
 obj.MouseEnter:Connect(function() TS:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = hoverColor}):Play() end)
 obj.MouseLeave:Connect(function() TS:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = defaultColor}):Play() end)
 end
-local function AddToggle(sec, id, flag, callback, tip)
-Nytro.Flags[flag] = false
+local function AddToggle(sec, id, flag, callback, tip, defaultVal)
+if Nytro.Flags[flag] == nil then
+Nytro.Flags[flag] = (defaultVal ~= nil) and defaultVal or false
+end
+local v = Nytro.Flags[flag]
 local frame = Instance.new("TextButton", sec)
 frame.Size = UDim2.new(1, 0, 0, 40)
 frame.BackgroundColor3 = Color3.fromRGB(35, 30, 45)
@@ -842,7 +845,7 @@ local lbl = Instance.new("TextLabel", frame)
 lbl.Size = UDim2.new(1, -60, 1, 0)
 lbl.Position = UDim2.new(0, 15, 0, 0)
 lbl.BackgroundTransparency = 1
-lbl.TextColor3 = Nytro.Theme.SubText
+lbl.TextColor3 = v and Nytro.Theme.Text or Nytro.Theme.SubText
 lbl.Font = Enum.Font.GothamMedium
 lbl.TextSize = 13
 lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -850,14 +853,14 @@ RegObj(lbl, id)
 local swBg = Instance.new("Frame", frame)
 swBg.Size = UDim2.new(0, 36, 0, 20)
 swBg.Position = UDim2.new(1, -50, 0.5, -10)
-swBg.BackgroundColor3 = Color3.fromRGB(20, 15, 25)
+swBg.BackgroundColor3 = v and Nytro.Theme.Accent or Color3.fromRGB(20, 15, 25)
 Instance.new("UICorner", swBg).CornerRadius = UDim.new(1, 0)
 local sStroke = Instance.new("UIStroke", swBg)
-sStroke.Color = Color3.fromRGB(60, 50, 80)
+sStroke.Color = v and Nytro.Theme.Accent or Color3.fromRGB(60, 50, 80)
 local swDot = Instance.new("Frame", swBg)
 swDot.Size = UDim2.new(0, 14, 0, 14)
-swDot.Position = UDim2.new(0, 3, 0.5, -7)
-swDot.BackgroundColor3 = Nytro.Theme.SubText
+swDot.Position = v and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
+swDot.BackgroundColor3 = v and Color3.new(1,1,1) or Nytro.Theme.SubText
 Instance.new("UICorner", swDot).CornerRadius = UDim.new(1, 0)
 local dotShadow = Instance.new("ImageLabel", swDot)
 dotShadow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -874,13 +877,13 @@ HoverEffect(frame, Color3.fromRGB(50, 40, 65), Color3.fromRGB(35, 30, 45))
 frame.MouseButton1Click:Connect(function()
 pcall(function()
 Nytro.Flags[flag] = not Nytro.Flags[flag]
-local v = Nytro.Flags[flag]
-TS:Create(lbl, TweenInfo.new(0.3), {TextColor3 = v and Nytro.Theme.Text or Nytro.Theme.SubText}):Play()
-TS:Create(swBg, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = v and Nytro.Theme.Accent or Color3.fromRGB(20, 15, 25)}):Play()
-TS:Create(sStroke, TweenInfo.new(0.3), {Color = v and Nytro.Theme.Accent or Color3.fromRGB(60, 50, 80)}):Play()
-TS:Create(swDot, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = v and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7), BackgroundColor3 = v and Color3.new(1,1,1) or Nytro.Theme.SubText}):Play()
-if v then Nytro.Notify("Módulo Activado", lbl.Text .. " ha sido encendido.", 2) end
-if callback then pcall(function() callback(v) end) end
+local val = Nytro.Flags[flag]
+TS:Create(lbl, TweenInfo.new(0.3), {TextColor3 = val and Nytro.Theme.Text or Nytro.Theme.SubText}):Play()
+TS:Create(swBg, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = val and Nytro.Theme.Accent or Color3.fromRGB(20, 15, 25)}):Play()
+TS:Create(sStroke, TweenInfo.new(0.3), {Color = val and Nytro.Theme.Accent or Color3.fromRGB(60, 50, 80)}):Play()
+TS:Create(swDot, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = val and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7), BackgroundColor3 = val and Color3.new(1,1,1) or Nytro.Theme.SubText}):Play()
+if val then Nytro.Notify("Módulo Activado", lbl.Text .. " ha sido encendido.", 2) end
+if callback then pcall(function() callback(val) end) end
 end)
 end)
 end
@@ -1333,6 +1336,17 @@ return oldIndex(self, key)
 end))
 end
 end)
+local function isScreenTouched(viewport)
+local touches = UIS:GetTouches()
+if #touches == 0 then return false end
+for i = 1, #touches do
+local pos = touches[i].Position
+if pos.X > (viewport.X * 0.35) or pos.Y < (viewport.Y * 0.5) then
+return true
+end
+end
+return false
+end
 local triggerDebounce = false
 RS:BindToRenderStep("Nytro_Framework", Enum.RenderPriority.Camera.Value + 1, function()
 pcall(function()
@@ -1345,7 +1359,12 @@ local lpHrp = lpChar and lpChar:FindFirstChild("HumanoidRootPart")
 local camCF = CAM.CFrame
 local camPos = camCF.Position
 local viewport = CAM.ViewportSize
+CAM = workspace.CurrentCamera
+camCF = CAM.CFrame
+camPos = camCF.Position
+viewport = CAM.ViewportSize
 local center = v2(viewport.X / 2, viewport.Y / 2)
+wtvp = CAM.WorldToViewportPoint
 local players = PLRS:GetPlayers()
 if flags["crs"] and CrosshairL then
 local sz, gap, thk = flags["xh_sz"] or 10, flags["xh_gap"] or 3, flags["xh_thk"] or 1
@@ -1400,7 +1419,7 @@ local hrp = char and char:FindFirstChild("HumanoidRootPart")
 local alive = hum and hrp and hum.Health > 0
 if alive then
 if aimOn then
-local part = char:FindFirstChild(aimPartStr) or char:FindFirstChild("Head") or hrp
+local part = char:FindFirstChild(aimPartStr) or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart") or hrp
 local partPos = part.Position
 local mag = lpHrp and (partPos - lpHrp.Position).Magnitude or 0
 if mag <= maxD then
@@ -1463,15 +1482,13 @@ end
 if flags["aim"] and tChar then
 local isAiming = false
 local key = flags["aimKey"] or Enum.UserInputType.MouseButton2
-if flags["aim_auto"] or (IS_MOBILE and key == Enum.UserInputType.Touch) then
+if flags["aim_auto"] then
 isAiming = true
+elseif IS_MOBILE then
+isAiming = (not Main.Visible) and isScreenTouched(viewport)
 elseif typeof(key) == "EnumItem" then
 if key.EnumType == Enum.UserInputType then
-if IS_MOBILE and key == Enum.UserInputType.MouseButton2 then
-isAiming = UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UIS:IsMouseButtonPressed(Enum.UserInputType.Touch)
-else
 isAiming = UIS:IsMouseButtonPressed(key)
-end
 elseif key.EnumType == Enum.KeyCode then
 isAiming = UIS:IsKeyDown(key)
 end
@@ -1721,7 +1738,7 @@ end)
 end)
 local sAim = AddSection(TAimL, "S_AIM")
 AddToggle(sAim, "C_AIM", "aim")
-AddToggle(sAim, "C_AIM_AUTO", "aim_auto")
+AddToggle(sAim, "C_AIM_AUTO", "aim_auto", nil, nil, IS_MOBILE)
 AddCycle(sAim, "C_METHOD", {"Camera", "Mouse"}, "aimMethod", "Mouse")
 AddSlider(sAim, "C_SMOOTH", 1, 10, 2, "aimSmooth")
 AddCycle(sAim, "C_BPART", {"Head", "HumanoidRootPart", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}, "aimPart", "Head")
