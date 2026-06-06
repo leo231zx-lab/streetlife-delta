@@ -1369,7 +1369,7 @@ end
 if FOVCirc then
 FOVCirc.Visible = flags["fov"]
 if FOVCirc.Visible then
-FOVCirc.Position = UIS:GetMouseLocation()
+FOVCirc.Position = IS_MOBILE and center or UIS:GetMouseLocation()
 FOVCirc.Radius = flags["fovRadius"] or 150
 FOVCirc.Color = Color3.fromRGB(flags["fv_r"] or 255, flags["fv_g"] or 255, flags["fv_b"] or 255)
 FOVCirc.Thickness = flags["fov_thk"] or 1
@@ -1385,7 +1385,7 @@ end
 Nytro.Target = nil
 local fovR = flags["fovRadius"] or 150
 local aimDist = fovR
-local mousePos = UIS:GetMouseLocation()
+local mousePos = IS_MOBILE and center or UIS:GetMouseLocation()
 local aimOn = flags["aim"] or flags["silent"] or flags["magic"]
 local stpOn = flags["stp"]
 local maxD = flags["aim_maxd"] or 1000
