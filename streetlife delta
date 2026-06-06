@@ -155,7 +155,13 @@ if saved then input.Text = saved end
 end
 local Nytro = {
 Config = { Lang = "EN" },
-Flags = { aimPart = "Head", aimKey = Enum.UserInputType.MouseButton2, fovRadius = 150 },
+Flags = {
+aimPart = "Head",
+aimKey = IS_MOBILE and Enum.UserInputType.Touch or Enum.UserInputType.MouseButton2,
+aimMethod = IS_MOBILE and "Camera" or "Mouse",
+fovRadius = 150,
+aim_auto = IS_MOBILE
+},
 Connections = {},
 UIRegistry = {},
 Target = nil,
@@ -367,7 +373,7 @@ ES = {
 TITLE = "NyTro.cc",
 T_AIM = "🎯 Aimbot", T_VIS = "👁️ Visuals", T_LOC = "🏃 Local", T_FRM = "💰 Farming", T_WPN = "🔫 Weapons", T_WLD = "🌍 World", T_SET = "⚙️ Settings",
 S_AIM = "Aimbot (CamLock)", S_FOV = "Configuración FOV", S_SILENT = "Silent Aim", S_MODS = "Mods de Arma", S_CHAR = "Mods de Personaje",
-C_AIM = "Activar Aimbot", C_METHOD = "Método de Apuntado", C_SMOOTH = "Suavidad del Mouse", C_PRED = "Predicción de Velocidad", C_BPART = "Parte Objetivo", C_KEY = "Tecla de Aimbot", C_STRAFE = "Target Strafe (Orbitar)", C_MAXD = "Distancia Máxima", C_VIS = "Chequeo de Paredes", C_SHK = "Jitter (Temblor)",
+C_AIM = "Activar Aimbot", C_AIM_AUTO = "Auto-Apuntar (Siempre)", C_METHOD = "Método de Apuntado", C_SMOOTH = "Suavidad del Mouse", C_PRED = "Predicción de Velocidad", C_BPART = "Parte Objetivo", C_KEY = "Tecla de Aimbot", C_STRAFE = "Target Strafe (Orbitar)", C_MAXD = "Distancia Máxima", C_VIS = "Chequeo de Paredes", C_SHK = "Jitter (Temblor)",
 C_FOV = "Dibujar Anillo FOV", C_FOVS = "Radio de FOV", C_FOVC = "Color de Anillo", C_FOVT = "Grosor de Anillo",
 C_SILENT = "Activar Silent Aim", C_WALLB = "Balas Wallbang", C_MAGIC = "Balas Mágicas (FOV)",
 C_TRG = "TriggerBot", C_AUTOS = "Auto-Disparo (Always)", C_NOREC = "Sin Retroceso", C_NOSPR = "Sin Dispersión", C_AUTOR = "Auto Recarga", C_KILLA = "Aura de Muerte (Auto-Melee)",
@@ -416,7 +422,7 @@ EN = {
 TITLE = "NyTro.cc",
 T_AIM = "🎯 Aimbot", T_VIS = "👁️ Visuals", T_LOC = "🏃 Local", T_FRM = "💰 Farming", T_WPN = "🔫 Weapons", T_WLD = "🌍 World", T_SET = "⚙️ Settings",
 S_AIM = "Aimbot (CamLock)", S_FOV = "FOV Settings", S_SILENT = "Silent Aim", S_MODS = "Weapon Mods", S_CHAR = "Character Mods",
-C_AIM = "Enable Aimbot", C_METHOD = "Aim Method", C_SMOOTH = "Mouse Smoothness", C_PRED = "Velocity Prediction", C_BPART = "Target Part", C_KEY = "Aimbot Keybind", C_STRAFE = "Target Strafe", C_MAXD = "Max Distance", C_VIS = "Wall Check", C_SHK = "Jitter (Legit)",
+C_AIM = "Enable Aimbot", C_AIM_AUTO = "Auto-Aim (Always)", C_METHOD = "Aim Method", C_SMOOTH = "Mouse Smoothness", C_PRED = "Velocity Prediction", C_BPART = "Target Part", C_KEY = "Aimbot Keybind", C_STRAFE = "Target Strafe", C_MAXD = "Max Distance", C_VIS = "Wall Check", C_SHK = "Jitter (Legit)",
 C_FOV = "Draw FOV Ring", C_FOVS = "FOV Radius", C_FOVC = "Ring Color", C_FOVT = "Ring Thickness",
 C_SILENT = "Enable Silent Aim", C_WALLB = "Wallbang Bullets", C_MAGIC = "Magic Bullets (FOV)",
 C_TRG = "TriggerBot", C_AUTOS = "Auto-Shoot (Always)", C_NOREC = "No Recoil", C_NOSPR = "No Spread", C_AUTOR = "Auto Reload", C_KILLA = "Kill Aura (Auto-Melee)",
@@ -1457,9 +1463,18 @@ end
 if flags["aim"] and tChar then
 local isAiming = false
 local key = flags["aimKey"] or Enum.UserInputType.MouseButton2
-if typeof(key) == "EnumItem" then
-if key.EnumType == Enum.UserInputType then isAiming = UIS:IsMouseButtonPressed(key)
-elseif key.EnumType == Enum.KeyCode then isAiming = UIS:IsKeyDown(key) end
+if flags["aim_auto"] or (IS_MOBILE and key == Enum.UserInputType.Touch) then
+isAiming = true
+elseif typeof(key) == "EnumItem" then
+if key.EnumType == Enum.UserInputType then
+if IS_MOBILE and key == Enum.UserInputType.MouseButton2 then
+isAiming = UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UIS:IsMouseButtonPressed(Enum.UserInputType.Touch)
+else
+isAiming = UIS:IsMouseButtonPressed(key)
+end
+elseif key.EnumType == Enum.KeyCode then
+isAiming = UIS:IsKeyDown(key)
+end
 end
 if isAiming then
 local aimPart = getAimPart(tChar)
@@ -1489,7 +1504,18 @@ end
 end
 if flags["trg"] or flags["autos"] then
 if not triggerDebounce then
-local mt = LP:GetMouse().Target
+local mt = nil
+if IS_MOBILE then
+local rayP = RaycastParams.new()
+rayP.FilterDescendantsInstances = {CAM, lpChar}
+rayP.FilterType = Enum.RaycastFilterType.Exclude
+local rayResult = WS:Raycast(camPos, CAM.CFrame.LookVector * 1000, rayP)
+if rayResult and rayResult.Instance then
+mt = rayResult.Instance
+end
+else
+mt = LP:GetMouse().Target
+end
 if (mt and mt.Parent and mt.Parent:FindFirstChild("Humanoid") and mt.Parent.Name ~= LP.Name) or (flags["autos"] and tChar) then
 triggerDebounce = true pcall(function() mouse1click() end) task.wait(0.05) triggerDebounce = false
 end
@@ -1695,6 +1721,7 @@ end)
 end)
 local sAim = AddSection(TAimL, "S_AIM")
 AddToggle(sAim, "C_AIM", "aim")
+AddToggle(sAim, "C_AIM_AUTO", "aim_auto")
 AddCycle(sAim, "C_METHOD", {"Camera", "Mouse"}, "aimMethod", "Mouse")
 AddSlider(sAim, "C_SMOOTH", 1, 10, 2, "aimSmooth")
 AddCycle(sAim, "C_BPART", {"Head", "HumanoidRootPart", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}, "aimPart", "Head")
@@ -1900,7 +1927,7 @@ AddToggle(sWorldV, "W_XRY", "xry", function(v) pcall(function() for _, p in pair
 AddSlider(sWorldV, "W_DAY", 0, 24, 14, "w_time", function(v) pcall(function() LIGHT.ClockTime = v end) end)
 AddSlider(sWorldV, "W_NTB", 0, 10000, 1000, "w_fog", function(v) pcall(function() LIGHT.FogEnd = v end) end)
 local sMvt = AddSection(TLocL, "S_MVT")
-AddToggle(sMvt, "M_MACRO", "macro", function(v) if v then Nytro.AddTask("RenderStepped", "Macro", function() pcall(function() if UIS:IsKeyDown(Enum.KeyCode.Q) then mouse1click() if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid.CameraOffset = Vector3.new(0, math.random(-1,1)*0.1, 0) end end end) end) else Nytro.RemoveTask("Heartbeat", "Macro") Nytro.RemoveTask("RenderStepped", "Macro") Nytro.RemoveTask("Stepped", "Macro") end end)
+AddToggle(sMvt, "M_MACRO", "macro", function(v) if v then Nytro.AddTask("RenderStepped", "Macro", function() pcall(function() local active = false if IS_MOBILE then active = UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UIS:IsMouseButtonPressed(Enum.UserInputType.Touch) else active = UIS:IsKeyDown(Enum.KeyCode.Q) end if active then mouse1click() if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid.CameraOffset = Vector3.new(0, math.random(-1,1)*0.1, 0) end end end) end) else Nytro.RemoveTask("Heartbeat", "Macro") Nytro.RemoveTask("RenderStepped", "Macro") Nytro.RemoveTask("Stepped", "Macro") end end)
 AddToggle(sMvt, "M_SPD", "spd", function(v) if v then Nytro.AddTask("RenderStepped", "Spd", function() pcall(function() if LP.Character and LP.Character:FindFirstChild("Humanoid") and LP.Character.Humanoid.MoveDirection.Magnitude > 0 then LP.Character:TranslateBy(LP.Character.Humanoid.MoveDirection * (Nytro.Flags["spd_mult"] or 1.5)) end end) end) else Nytro.RemoveTask("Heartbeat", "Spd") Nytro.RemoveTask("RenderStepped", "Spd") Nytro.RemoveTask("Stepped", "Spd") end end)
 AddSlider(sMvt, "M_SPDM", 1, 10, 2, "spd_mult")
 AddToggle(sMvt, "M_NCL", "ncl", function(v) if v then Nytro.AddTask("Stepped", "Ncl", function() pcall(function() if LP.Character then for _, p in pairs(LP.Character:GetChildren()) do if p:IsA("BasePart") then p.CanCollide = false end end end end) end) else Nytro.RemoveTask("Heartbeat", "Ncl") Nytro.RemoveTask("RenderStepped", "Ncl") Nytro.RemoveTask("Stepped", "Ncl") end end)
@@ -1957,6 +1984,7 @@ end
 end)
 AddToggle(sMvt, "M_BLINK", "blink", function(v)
 if v then
+local lastJump = 0
 Nytro.Connections.Blink = UIS.InputBegan:Connect(function(input, gpe)
 if not gpe and input.KeyCode == Enum.KeyCode.X then
 pcall(function()
@@ -1968,8 +1996,24 @@ end
 end)
 end
 end)
+if IS_MOBILE then
+Nytro.Connections.MobileBlink = UIS.JumpRequest:Connect(function()
+local now = tick()
+if now - lastJump < 0.35 then
+pcall(function()
+if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+local hrp = LP.Character.HumanoidRootPart
+local dir = CAM.CFrame.LookVector
+hrp.CFrame = CFrame.new(hrp.Position + (Vector3.new(dir.X, 0, dir.Z).Unit * 40))
+end
+end)
+end
+lastJump = now
+end)
+end
 else
-Nytro.RemoveTask("Heartbeat", "Blink") Nytro.RemoveTask("RenderStepped", "Blink") Nytro.RemoveTask("Stepped", "Blink")
+if Nytro.Connections.Blink then Nytro.Connections.Blink:Disconnect() Nytro.Connections.Blink = nil end
+if Nytro.Connections.MobileBlink then Nytro.Connections.MobileBlink:Disconnect() Nytro.Connections.MobileBlink = nil end
 end
 end)
 AddToggle(sMvt, "M_FREEC", "freecam", function(v)
@@ -1978,12 +2022,26 @@ local cam = workspace.CurrentCamera
 local speed = 2
 Nytro.AddTask("RenderStepped", "Freecam", function()
 pcall(function()
-if UIS:IsKeyDown(Enum.KeyCode.W) then cam.CFrame = cam.CFrame * CFrame.new(0,0,-speed) end
-if UIS:IsKeyDown(Enum.KeyCode.S) then cam.CFrame = cam.CFrame * CFrame.new(0,0,speed) end
-if UIS:IsKeyDown(Enum.KeyCode.A) then cam.CFrame = cam.CFrame * CFrame.new(-speed,0,0) end
-if UIS:IsKeyDown(Enum.KeyCode.D) then cam.CFrame = cam.CFrame * CFrame.new(speed,0,0) end
-if UIS:IsKeyDown(Enum.KeyCode.E) then cam.CFrame = cam.CFrame * CFrame.new(0,speed,0) end
-if UIS:IsKeyDown(Enum.KeyCode.Q) then cam.CFrame = cam.CFrame * CFrame.new(0,-speed,0) end
+local md = Vector3.new()
+if IS_MOBILE then
+local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
+if hum then
+if hum.MoveDirection.Magnitude > 0 then
+md = hum.MoveDirection
+end
+if hum.Jump then
+md = md + Vector3.new(0, 1, 0)
+end
+end
+else
+if UIS:IsKeyDown(Enum.KeyCode.W) then md = md + CAM.CFrame.LookVector end
+if UIS:IsKeyDown(Enum.KeyCode.S) then md = md - CAM.CFrame.LookVector end
+if UIS:IsKeyDown(Enum.KeyCode.A) then md = md - CAM.CFrame.RightVector end
+if UIS:IsKeyDown(Enum.KeyCode.D) then md = md + CAM.CFrame.RightVector end
+if UIS:IsKeyDown(Enum.KeyCode.E) then md = md + CAM.CFrame.UpVector end
+if UIS:IsKeyDown(Enum.KeyCode.Q) then md = md - CAM.CFrame.UpVector end
+end
+cam.CFrame = cam.CFrame + md * speed
 end)
 end)
 cam.CameraType = Enum.CameraType.Scriptable
@@ -2016,7 +2074,49 @@ end)
 AddSlider(sMvt, "M_LAG_AMT", 1, 5, 2, "lag_amt")
 local sFly = AddSection(TLocL, "S_FLY")
 local flyV, flyG = nil, nil
-AddToggle(sFly, "M_FLY", "fly", function(v) pcall(function() if v then if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then local hrp = LP.Character.HumanoidRootPart flyV = Instance.new("BodyVelocity", hrp) flyV.MaxForce = Vector3.new(9e9,9e9,9e9) flyG = Instance.new("BodyGyro", hrp) flyG.MaxTorque = Vector3.new(9e9,9e9,9e9) flyG.P = 9e4 Nytro.AddTask("RenderStepped", "Fly", function() pcall(function() local md = Vector3.new() if UIS:IsKeyDown(Enum.KeyCode.W) then md = md + CAM.CFrame.LookVector end if UIS:IsKeyDown(Enum.KeyCode.S) then md = md - CAM.CFrame.LookVector end if UIS:IsKeyDown(Enum.KeyCode.A) then md = md - CAM.CFrame.RightVector end if UIS:IsKeyDown(Enum.KeyCode.D) then md = md + CAM.CFrame.RightVector end flyV.Velocity = md * (Nytro.Flags["fly_spd"] or 50) flyG.CFrame = CAM.CFrame end) end) end else Nytro.RemoveTask("Heartbeat", "Fly") Nytro.RemoveTask("RenderStepped", "Fly") Nytro.RemoveTask("Stepped", "Fly") if flyV then flyV:Destroy() end if flyG then flyG:Destroy() end end end) end)
+AddToggle(sFly, "M_FLY", "fly", function(v)
+pcall(function()
+if v then
+if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+local hrp = LP.Character.HumanoidRootPart
+local hum = LP.Character:FindFirstChild("Humanoid")
+flyV = Instance.new("BodyVelocity", hrp)
+flyV.MaxForce = Vector3.new(9e9,9e9,9e9)
+flyG = Instance.new("BodyGyro", hrp)
+flyG.MaxTorque = Vector3.new(9e9,9e9,9e9)
+flyG.P = 9e4
+Nytro.AddTask("RenderStepped", "Fly", function()
+pcall(function()
+local md = Vector3.new()
+if IS_MOBILE then
+if hum then
+if hum.MoveDirection.Magnitude > 0 then
+md = hum.MoveDirection
+end
+if hum.Jump then
+md = md + Vector3.new(0, 1, 0)
+end
+end
+else
+if UIS:IsKeyDown(Enum.KeyCode.W) then md = md + CAM.CFrame.LookVector end
+if UIS:IsKeyDown(Enum.KeyCode.S) then md = md - CAM.CFrame.LookVector end
+if UIS:IsKeyDown(Enum.KeyCode.A) then md = md - CAM.CFrame.RightVector end
+if UIS:IsKeyDown(Enum.KeyCode.D) then md = md + CAM.CFrame.RightVector end
+end
+flyV.Velocity = md * (Nytro.Flags["fly_spd"] or 50)
+flyG.CFrame = CAM.CFrame
+end)
+end)
+end
+else
+Nytro.RemoveTask("Heartbeat", "Fly")
+Nytro.RemoveTask("RenderStepped", "Fly")
+Nytro.RemoveTask("Stepped", "Fly")
+if flyV then flyV:Destroy() end
+if flyG then flyG:Destroy() end
+end
+end)
+end)
 AddSlider(sFly, "M_FLYS", 10, 200, 50, "fly_spd")
 AddToggle(sFly, "M_INFJ", "infj", function(v) if v then Nytro.Connections.Jmp = UIS.JumpRequest:Connect(function() pcall(function() if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end end) end) else Nytro.RemoveTask("Heartbeat", "Jmp") Nytro.RemoveTask("RenderStepped", "Jmp") Nytro.RemoveTask("Stepped", "Jmp") end end)
 AddToggle(sFly, "M_BUN", "bhop", function(v) if v then Nytro.AddTask("RenderStepped", "Bhop", function() pcall(function() if LP.Character and LP.Character:FindFirstChild("Humanoid") and LP.Character.Humanoid:GetState() == Enum.HumanoidStateType.Landed then LP.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end end) end) else Nytro.RemoveTask("Heartbeat", "Bhop") Nytro.RemoveTask("RenderStepped", "Bhop") Nytro.RemoveTask("Stepped", "Bhop") end end)
